@@ -25,7 +25,7 @@
 
 # launch the program
 IDP<-function() {
-  IDP.source(dir="/Users/SKOPF/Dropbox/Tools/software/R/codinglab/isodatparser", sourcefile="IDP.R")
+  IDP.source(dir="/Users/SKOPF/Dropbox/Tools/software/R/idp", sourcefile="IDP.R")
   IDP.start(load = "idp")
   return()
 }
@@ -33,7 +33,7 @@ IDP<-function() {
 # launch the program in development mode (repackages)
 IDP.dev<-function() {
   IDP.package()
-  IDP.source(dir="/Users/SKOPF/Dropbox/Tools/software/R/codinglab/isodatparser", sourcefile="IDP.R")
+  IDP.source(dir="/Users/SKOPF/Dropbox/Tools/software/R/idp", sourcefile="IDP.R")
   obj <- IDP.start(load = "idpdev", askReload = FALSE)
   return(obj)
 }
@@ -217,7 +217,7 @@ IDP.install<-function() {
 ###################
 
 # package IDP
-IDP.package<-function(filename="IDP.R", dir="/Users/SKOPF/Dropbox/Tools/software/R/codinglab/isodatparser") {
+IDP.package<-function(filename="IDP.R", dir="/Users/SKOPF/Dropbox/Tools/software/R/idp") {
   funcsdir<-"/Users/SKOPF/Dropbox/Tools/software/R/funcs"
   funcsfiles<-c("SKGUILIB.R", "SKDATALIB.R", "SKUTILLIB.R", "SKPLOTLIB.R")
   idpdir<-dir

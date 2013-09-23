@@ -40,7 +40,7 @@ IDP.hideInfo<-function(idp) {
 IDP.gui<-function(idp) {
   
   ### main window
-  idp$gui$win<-gwindow(paste("Isodate File Processor -", IDP.getVersionInfo(idp)), width=1200, height=640, visible=FALSE)
+  idp$gui$win<-gwindow(paste("Isodate File Processor -", IDP.getVersionInfo(idp)), width=1280, height=640, visible=FALSE)
   
   ### storing settings for easier modification
   tag(idp$gui$win, "settings")<-idp$settings
@@ -141,7 +141,7 @@ IDP.gui<-function(idp) {
   
   ### plot grp
   idp$gui$pn <- pn.GUI(plot.grp, idp$gui$win, enablePlotLabel=FALSE, enableMenuButtons=FALSE, startWithTab=FALSE,
-                       plotObjLoadHandler=function(obj) IDP.loadIsodatFile(idp, obj$plotinfo),
+                       plotObjLoadHandler=function(obj) IDP.loadIsodatFileTab(idp, obj$plotinfo),
                        plotEventHandlers=list(
                           Changed = function(h,...) IDP.plotClickHandler(idp, h),
                           Doubleclick = function(h,...) IDP.plotDoubleClickHandler(idp, h),
@@ -197,8 +197,9 @@ IDP.gui<-function(idp) {
         visible(dlg, set=TRUE) ## show dialog
         }),
       list ("DeletePeak" , "gtk-cancel" , "Delete Peak", "<ctrl>D", "Delete selected peak (<ctrl>D)" , function(...) {gmessage("sorry, not implemented yet")}),
-      list ("Revert" , "gtk-save" , "Revert", NULL, "" , function(...) {}),
-      list ("RevertTwo" , "gtk-close" , "Revert Two", NULL, "" , function(...) {})
+      list ("CopyTable" , "gtk-copy" , "Copy Table", "<ctrl>C", "Copy the peak table to the clipboard." , function(...) IDP.copyPeakTable(idp)),
+      list ("Recalculate" , "gtk-execute" , "Recalculate", "<ctrl>R", "Recalculate the isotopic composition based on the standards picked." , function(...) IDP.recalculatePeakTable(idp)),
+      list ("Revert" , "gtk-revert-to-saved" , "Discard All", NULL, "Discard all changes and return to original peak table from data file." , function(...) IDP.revertPeakTable(idp))
     )
   
   action_group <- gtkActionGroup ( "FileGroup" )
@@ -261,7 +262,7 @@ IDP.gui<-function(idp) {
   action_group$addActionWithAccel(modeacts$ModeInfo, "<control>I")
   action_group$addActionWithAccel(modeacts$ModeAdd, "<control>A")
   action_group$addActionWithAccel(modeacts$ModeEdit, "<control>E")
-  action_group$addActionWithAccel(modeacts$ModeStds, "<control>C")
+  action_group$addActionWithAccel(modeacts$ModeStds, NULL) #FIXME (control - C taken by copy peak table)
   
   
   ### assemble menu
@@ -358,17 +359,16 @@ IDP.getNavXML<-function() {
     <toolitem action = "MoveIntervalB"/>
     <toolitem action = "MoveIntervalF"/>
     <toolitem action ="SetAxes"/>
-  <separator expand="true"/>
-  <separator/>
-  <toolitem action ="ModeInfo"/>
-  <toolitem action ="ModeAdd"/>
-  <toolitem action ="ModeEdit"/>
-  <toolitem action ="DeletePeak"/>
-  <toolitem action ="ModeStds"/>
-  <separator/>
-  <separator expand="true"/>
-  <toolitem action ="Revert"/>
-  <toolitem action ="RevertTwo"/>
+    <separator/>
+    <toolitem action ="ModeInfo"/>
+    <toolitem action ="ModeAdd"/>
+    <toolitem action ="ModeEdit"/>
+    <toolitem action ="DeletePeak"/>
+    <toolitem action ="ModeStds"/>
+    <separator/>
+    <toolitem action ="CopyTable"/>
+    <toolitem action ="Recalculate"/>
+    <toolitem action ="Revert"/>
   </toolbar>
   </ui>'
   return(nav.xml)

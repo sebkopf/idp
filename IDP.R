@@ -1,6 +1,6 @@
 ##################################
 # PACKAGED Isodat File Processor #
-# 2013-09-17 by SKOPF           #
+# 2013-09-22 by SKOPF           #
 ##################################
 
 
@@ -33,7 +33,7 @@
 
 # launch the program
 IDP<-function() {
-  IDP.source(dir="/Users/SKOPF/Dropbox/Tools/software/R/codinglab/isodatparser", sourcefile="IDP.R")
+  IDP.source(dir="/Users/SKOPF/Dropbox/Tools/software/R/idp", sourcefile="IDP.R")
   IDP.start(load = "idp")
   return()
 }
@@ -41,7 +41,7 @@ IDP<-function() {
 # launch the program in development mode (repackages)
 IDP.dev<-function() {
   IDP.package()
-  IDP.source(dir="/Users/SKOPF/Dropbox/Tools/software/R/codinglab/isodatparser", sourcefile="IDP.R")
+  IDP.source(dir="/Users/SKOPF/Dropbox/Tools/software/R/idp", sourcefile="IDP.R")
   obj <- IDP.start(load = "idpdev", askReload = FALSE)
   return(obj)
 }
@@ -225,7 +225,7 @@ IDP.install<-function() {
 ###################
 
 # package IDP
-IDP.package<-function(filename="IDP.R", dir="/Users/SKOPF/Dropbox/Tools/software/R/codinglab/isodatparser") {
+IDP.package<-function(filename="IDP.R", dir="/Users/SKOPF/Dropbox/Tools/software/R/idp") {
   funcsdir<-"/Users/SKOPF/Dropbox/Tools/software/R/funcs"
   funcsfiles<-c("SKGUILIB.R", "SKDATALIB.R", "SKUTILLIB.R", "SKPLOTLIB.R")
   idpdir<-dir
@@ -287,7 +287,7 @@ IDP.hideInfo<-function(idp) {
 IDP.gui<-function(idp) {
   
   ### main window
-  idp$gui$win<-gwindow(paste("Isodate File Processor -", IDP.getVersionInfo(idp)), width=1200, height=640, visible=FALSE)
+  idp$gui$win<-gwindow(paste("Isodate File Processor -", IDP.getVersionInfo(idp)), width=1280, height=640, visible=FALSE)
   
   ### storing settings for easier modification
   tag(idp$gui$win, "settings")<-idp$settings
@@ -388,7 +388,7 @@ IDP.gui<-function(idp) {
   
   ### plot grp
   idp$gui$pn <- pn.GUI(plot.grp, idp$gui$win, enablePlotLabel=FALSE, enableMenuButtons=FALSE, startWithTab=FALSE,
-                       plotObjLoadHandler=function(obj) IDP.loadIsodatFile(idp, obj$plotinfo),
+                       plotObjLoadHandler=function(obj) IDP.loadIsodatFileTab(idp, obj$plotinfo),
                        plotEventHandlers=list(
                           Changed = function(h,...) IDP.plotClickHandler(idp, h),
                           Doubleclick = function(h,...) IDP.plotDoubleClickHandler(idp, h),
@@ -444,8 +444,9 @@ IDP.gui<-function(idp) {
         visible(dlg, set=TRUE) ## show dialog
         }),
       list ("DeletePeak" , "gtk-cancel" , "Delete Peak", "<ctrl>D", "Delete selected peak (<ctrl>D)" , function(...) {gmessage("sorry, not implemented yet")}),
-      list ("Revert" , "gtk-save" , "Revert", NULL, "" , function(...) {}),
-      list ("RevertTwo" , "gtk-close" , "Revert Two", NULL, "" , function(...) {})
+      list ("CopyTable" , "gtk-copy" , "Copy Table", "<ctrl>C", "Copy the peak table to the clipboard." , function(...) IDP.copyPeakTable(idp)),
+      list ("Recalculate" , "gtk-execute" , "Recalculate", "<ctrl>R", "Recalculate the isotopic composition based on the standards picked." , function(...) IDP.recalculatePeakTable(idp)),
+      list ("Revert" , "gtk-revert-to-saved" , "Discard All", NULL, "Discard all changes and return to original peak table from data file." , function(...) IDP.revertPeakTable(idp))
     )
   
   action_group <- gtkActionGroup ( "FileGroup" )
@@ -508,7 +509,7 @@ IDP.gui<-function(idp) {
   action_group$addActionWithAccel(modeacts$ModeInfo, "<control>I")
   action_group$addActionWithAccel(modeacts$ModeAdd, "<control>A")
   action_group$addActionWithAccel(modeacts$ModeEdit, "<control>E")
-  action_group$addActionWithAccel(modeacts$ModeStds, "<control>C")
+  action_group$addActionWithAccel(modeacts$ModeStds, NULL) #FIXME (control - C taken by copy peak table)
   
   
   ### assemble menu
@@ -605,17 +606,16 @@ IDP.getNavXML<-function() {
     <toolitem action = "MoveIntervalB"/>
     <toolitem action = "MoveIntervalF"/>
     <toolitem action ="SetAxes"/>
-  <separator expand="true"/>
-  <separator/>
-  <toolitem action ="ModeInfo"/>
-  <toolitem action ="ModeAdd"/>
-  <toolitem action ="ModeEdit"/>
-  <toolitem action ="DeletePeak"/>
-  <toolitem action ="ModeStds"/>
-  <separator/>
-  <separator expand="true"/>
-  <toolitem action ="Revert"/>
-  <toolitem action ="RevertTwo"/>
+    <separator/>
+    <toolitem action ="ModeInfo"/>
+    <toolitem action ="ModeAdd"/>
+    <toolitem action ="ModeEdit"/>
+    <toolitem action ="DeletePeak"/>
+    <toolitem action ="ModeStds"/>
+    <separator/>
+    <toolitem action ="CopyTable"/>
+    <toolitem action ="Recalculate"/>
+    <toolitem action ="Revert"/>
   </toolbar>
   </ui>'
   return(nav.xml)
@@ -690,13 +690,14 @@ IDP.zoomBest<-function(idp, xlim = NULL, zoomMin = TRUE, zoomMax = TRUE) {
   if (!is.null(fileInfo$plotInfo)) {
     if (is.null(xlim))
       xlim <- tail(fileInfo$plotInfo$xlim, 1)[[1]]
-    ylim <- tail(fileInfo$plotInfo$ylim)[[1]]
+    ylim <- tail(fileInfo$plotInfo$ylim, 1)[[1]]
     bestYlim <- IDP.findSignalLimits(idp, data=fileInfo$data, xlim=xlim)# get best fit on this interval
+  
     if (zoomMin)
       ylim[1] <- bestYlim[1]
     if (zoomMax)
       ylim[2] <- bestYlim[2]
-    
+      
     # store new positions
     fileInfo$plotInfo$xlim <- c(fileInfo$plotInfo$xlim, list(xlim))
     fileInfo$plotInfo$ylim <- c(fileInfo$plotInfo$ylim, list(ylim)) 
@@ -732,7 +733,7 @@ IDP.zoomMove<-function(idp, move){
   if (!is.null(fileInfo$plotInfo)) {
     xlim <- tail(fileInfo$plotInfo$xlim, 1)[[1]]
     xlim <- xlim + move*tag(idp$gui$win, "settings")$plotOptions$zoomMove*diff(xlim)
-    IDP.zoomBest(idp, xlim = xlim, zoomMin = TRUE, zoomMax = idp$gui$bestfitActive['active']) #FIXME: consider conserving the ylim distance rather than just changing zoom min!
+    IDP.zoomBest(idp, xlim = xlim, zoomMin = idp$gui$bestfitActive['active'], zoomMax = idp$gui$bestfitActive['active']) 
   }
 }
 
@@ -928,7 +929,7 @@ idp.resetZoomHandler<-function(plotsNotebook){
 #######################################
 
 # load tab
-IDP.loadIsodatFile<-function(idp, fileTabObj) {
+IDP.loadIsodatFileTab<-function(idp, fileTabObj) {
   IDP.loadPeakTable(idp, fileTabObj$peakTable) # load peak table
   widgets.load(idp$gui$fileInfo, fileTabObj$fileInfo) # load regular file information
 }
@@ -976,7 +977,10 @@ IDP.openIsodatFile<-function(idp, directory, filename) {
   # store tab info
   tabInfo <- list(
     fileInfo = fileObj[c("H3factor", "GCprogram", "MSprogram", "Filename", "ASprogram")],
+    originalPeakTable = fileObj$peakTable,
     peakTable = fileObj$peakTable,
+    peakTableEdited = FALSE, # whether the peak table has been edited at all
+    peakTableEvaluated = TRUE, # whether the peak table has been evaluated since the last edit that would require reevaluation (e.g. changing standards)
     data = fileObj$data)
   pn.storeInfo(idp$gui$pn, tabInfo, reset=TRUE)
   
@@ -984,7 +988,7 @@ IDP.openIsodatFile<-function(idp, directory, filename) {
   IDP.plot(idp)
   
   # load tab
-  IDP.loadIsodatFile(idp, pn.getAllInfo(idp$gui$pn))
+  IDP.loadIsodatFileTab(idp, pn.getAllInfo(idp$gui$pn))
   
   # finished
   IDP.showInfo(idp, paste(filename, "loaded successfully."), timer=2, okButton=FALSE)
@@ -1111,6 +1115,26 @@ IDP.loadPeakTable<-function(idp, peakTable) {
   }
 }
 
+# copy peak table to clipboard
+IDP.copyPeakTable<-function(idp) {
+  # FIXME: throw warning if there have been changes to the standards that have not be recalculated yet
+  cp.copyDF(tag(idp$gui$win, "dataTable")[])
+}
+
+# recalculate isotopic value of peak table
+IDP.recalculatePeakTable<-function(idp) {
+  gmessage("sorry, not implemented yet")
+}
+
+# revert to original peak table
+IDP.revertPeakTable<-function(idp) {
+  if (!is.null(oriPeakTable <- pn.getAllInfo(idp$gui$pn)$originalPeakTable)) {
+    if (gconfirm("Do you really want to discard all changes you have made to peak/standard assignments in this file?")) {
+      pn.storeInfo(idp$gui$pn, list(peakTable=oriPeakTable), reset=TRUE)
+      IDP.loadPeakTable(idp, oriPeakTable)
+    }
+  }
+}
 
 
 ##################################

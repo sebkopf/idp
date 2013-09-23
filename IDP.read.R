@@ -6,7 +6,7 @@
 #######################################
 
 # load tab
-IDP.loadIsodatFile<-function(idp, fileTabObj) {
+IDP.loadIsodatFileTab<-function(idp, fileTabObj) {
   IDP.loadPeakTable(idp, fileTabObj$peakTable) # load peak table
   widgets.load(idp$gui$fileInfo, fileTabObj$fileInfo) # load regular file information
 }
@@ -54,7 +54,10 @@ IDP.openIsodatFile<-function(idp, directory, filename) {
   # store tab info
   tabInfo <- list(
     fileInfo = fileObj[c("H3factor", "GCprogram", "MSprogram", "Filename", "ASprogram")],
+    originalPeakTable = fileObj$peakTable,
     peakTable = fileObj$peakTable,
+    peakTableEdited = FALSE, # whether the peak table has been edited at all
+    peakTableEvaluated = TRUE, # whether the peak table has been evaluated since the last edit that would require reevaluation (e.g. changing standards)
     data = fileObj$data)
   pn.storeInfo(idp$gui$pn, tabInfo, reset=TRUE)
   
@@ -62,7 +65,7 @@ IDP.openIsodatFile<-function(idp, directory, filename) {
   IDP.plot(idp)
   
   # load tab
-  IDP.loadIsodatFile(idp, pn.getAllInfo(idp$gui$pn))
+  IDP.loadIsodatFileTab(idp, pn.getAllInfo(idp$gui$pn))
   
   # finished
   IDP.showInfo(idp, paste(filename, "loaded successfully."), timer=2, okButton=FALSE)
