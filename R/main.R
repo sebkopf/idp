@@ -1,3 +1,29 @@
+#' Isodat Data Processor (IDP)
+#' 
+#' User interface to facilitate interacting with isodat data.
+#' 
+#' @name idp-package
+#' @aliases idp
+#' @docType package
+#' @title idp package
+#' @author Sebastian Kopf
+#' @seealso \code{\link{idp.start}}
+#' @examples
+#' \dontrun{\code{idp.start()}}
+#' 
+#' @include utils.R
+#' @include load_save.R
+#' @include gui.R
+#' @include widgets.R
+#' @include compounds.R
+#' @include peaklists.R
+#' @include datasets.R
+#' @include imports.R
+#' @include exports.R
+#' @include plots.R
+#' @include chromedit.R
+NULL
+
 #######################################
 # Code for isodat file parser (IDP)   #
 # Main file (launch, loading, saving) #
