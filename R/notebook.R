@@ -1,7 +1,3 @@
-#################
-# PLOT NOTBEOOK #
-#################
-
 #FOR TESTING PURPOSES
 #win<-gwindow("blub")
 #pn.GUI(gframe(cont=win, horizontal=FALSE), win)
@@ -206,6 +202,9 @@ pn.getAllPlotTabObjs<-function(pn) return (tag(pn$plot.nb, "tabs"))
 # get all plot tab names
 pn.getAllPlotTabNames<-function(pn) return(names(pn$plot.nb))
 
+# get selected plot tab name
+pn.getSelectedPlotTabName<-function(pn) return(names(pn$plot.nb)[svalue(pn$plot.nb)])
+
 # get them for the selected tab
 pn.getSelectedPlotTabParam<-function(pn, params=NULL) return (pn.getPlotTabParam(pn, svalue(pn$plot.nb), params=params))
 
@@ -236,4 +235,5 @@ pn.getAllInfo<-function(pn) return(pn.getSelectedPlotTabParam(pn, params="plotin
 
 # utility function for retrieving parts of the user information from the current tab
 pn.getInfo<-function(pn, fields) return(pn.getAllInfo(pn)[fields])
+
 

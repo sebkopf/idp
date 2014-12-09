@@ -25,12 +25,16 @@ Depends:
     reshape2,
     plyr,
     scales,
-    stringr
+    stringr,
+    xlsx
 Suggests:
     knitr
 Collate:
+    'data.R'
+    'export.R'
     'gui.R'
     'widgets.R'
+    'utils.R'
     'table.R'
     'read.R'
     'plots.R'

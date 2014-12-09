@@ -1,10 +1,3 @@
-#######################################
-# Code for isodat file parser (IDP)   #
-# Peak Table Funcs                    #
-# Copyright 2013 Sebastian Kopf       #
-# seb.kopf@gmail.com                  #
-#######################################
-
 IDP.getEmptyPeakTable<-function(idp) {
   options(stringsAsFactors = FALSE)
   indices <- which(tag(idp$gui$win, "settings")$peakTableColumns$Show)
@@ -14,7 +7,7 @@ IDP.getEmptyPeakTable<-function(idp) {
 }
 
 IDP.getDataPeakTable<-function(idp, peakTable) {
-  indices <- which(tag(idp$gui$win, "settings")$peakTableColumns$Show)
+  indices <- which(IDP.getSettings(idp, "peakTableColumns")$Show)
   return(peakTable[,indices])
 }
 
@@ -46,3 +39,4 @@ IDP.revertPeakTable<-function(idp) {
     }
   }
 }
+
