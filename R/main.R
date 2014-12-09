@@ -11,99 +11,37 @@
 #' @examples
 #' \dontrun{\code{idp.start()}}
 #' 
-#' @include utils.R
-#' @include load_save.R
 #' @include gui.R
 #' @include widgets.R
-#' @include compounds.R
-#' @include peaklists.R
-#' @include datasets.R
-#' @include imports.R
-#' @include exports.R
+#' @include notebook.R
 #' @include plots.R
-#' @include chromedit.R
+#' @include read.R
+#' @include table.R
 NULL
 
-#######################################
-# Code for isodat file parser (IDP)   #
-# Main file (launch, loading, saving) #
-# Copyright 2013 Sebastian Kopf       #
-# seb.kopf@gmail.com                  #
-#######################################
-
-# Permission is hereby granted, free of charge, to any person obtaining a copy
-# of this program and associated documentation files (the "Software"), to deal
-# in the Software without restriction, including without limitation the rights
-# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-# copies of the Software, and to permit persons to whom the Software is
-# furnished to do so, subject to the following conditions:
-#   
-# The above copyright notice and this permission notice shall be included in
-# all copies or substantial portions of the Software.
-# 
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-# THE SOFTWARE.
-
-# launch the program
-IDP<-function() {
-  IDP.source(dir="/Users/SKOPF/Dropbox/Tools/software/R/idp", sourcefile="IDP.R")
-  IDP.start(load = "idp")
-  return()
+#' Start in development mode
+#' @export
+idp.dev <- function() {
+  return(idp.start(load = "idpdev", askReload = FALSE))
 }
 
-# launch the program in development mode (repackages)
-IDP.dev<-function() {
-  IDP.package()
-  IDP.source(dir="/Users/SKOPF/Dropbox/Tools/software/R/idp", sourcefile="IDP.R")
-  obj <- IDP.start(load = "idpdev", askReload = FALSE)
-  return(obj)
-}
-
-###########################
-# Change program settings #
-###########################
-
-# change settings on the idp object
-IDP.changeSettings<-function(idp, settings) {
-  #FIXME - implement me
-  return (idp)
-}
-
-####################################
-# Source, start and initialization #
-####################################
-
-# requried libraries and sourcing source files
-IDP.source <- function(dir, sourcefile) {
-  # required libraries
-  library(psych)
-  library(gWidgets)
-  library(ggplot2)
-  library(gridExtra)
-  library(reshape2)
-  library(plyr)
-  library(scales)
-  library(stringr)
-  library(RGtk2)
+#' Start the Isodat Data Processor
+#' @param load previous instance of the program OR name of the global variable to look for
+#' @param askReload whether to ask the user if they want to reload the previous instance 
+#'  or just reload it without asking
+#' @return invisible instance of the idp (can be used for calling things directly)
+#' @export
+idp.start <- function(load = NULL, askReload = TRUE) {
   
-  # gui toolkit
+  # load RGtk2
   options("guiToolkit"="RGtk2")
   
   # make sure the right id function (from the widgets package) is always used
   id <- gWidgets::id
   
-  # sourcing program file
-  source(file.path(dir, sourcefile))
-}
-
-# start the program
-# [idp] = previous instance of the program OR name of the global variable to look for
-IDP.start<-function(load = NULL, askReload = TRUE) {
+  # inform user
+  message("\nLaunching IDP... please wait...\n\n")
+  
   # initialization
   if (identical(class(load), "list"))
     idp <- load # an existing instance was passed along (FIXME: do more checking here?)
@@ -118,14 +56,33 @@ IDP.start<-function(load = NULL, askReload = TRUE) {
   if (identical(class(load), "character"))
     idp$settings$gvar <- load
     
-  # update object instance  
-  idp <- IDP.update(idp) # update instance
-  
   # launch gui
   idp <- IDP.gui(idp)
   
-  return (idp)
+  return (invisible(idp))
 }
+
+#' Start the Isodat Data Processor with an Rscript
+#' 
+#' Same as idp.start except it makes sure to keep the terminal alive with
+#' a loop until the program actually exits
+#' @export
+idp.start_from_script <- function(...) {
+  
+  stop("not implemented yet!")
+  
+  idp.start(...)
+  
+  # run loop until the program is finished
+  message("\n\nIDP running modally. Have fun!")
+  while (IDP.running) {
+    # FIXME IMPLEMENT THIS!!! HERE !!!
+  }
+}
+
+################
+# Initializing #
+################
 
 # initialize an idp instance
 IDP.init<-function() {
@@ -135,7 +92,7 @@ IDP.init<-function() {
     data = list())
   
   idp$settings$version <- 0.1 # version number
-  idp$settings$gvar <- "idp" # global variable name
+  idp$settings$gvar <- "idp_settings" # global variable name
   idp$settings$options <- list( # which options are available
     saveToWorkspace = TRUE) # button to save IDP to workspace
   idp$settings$mode <- "ModeInfo" # options: ModeInfo, ModeAdd, ModeEdit, ModeDel, ModeStds
@@ -167,6 +124,16 @@ IDP.init<-function() {
   return (idp)
 }
 
+###########################
+# Change program settings #
+###########################
+
+# change settings on the idp object
+IDP.changeSettings<-function(idp, settings) {
+  #FIXME - implement me
+  return (idp)
+}
+
 #######################
 # Saving to workspace #
 #######################
@@ -180,83 +147,4 @@ IDP.save <- function(idp) {
   assign(idp$settings$gvar, save, envir=.GlobalEnv)
 }
 
-##########################
-# Versioning and Updates #
-##########################
-
-# get all versions of the software
-IDP.getVersions<-function() {
-  # versions data frame
-  versions<-data.frame(version=numeric(), date=character(), released=logical(), codename=character(), stringsAsFactors=F)
-  versions[nrow(versions)+1,]<-list(version=0.1, date="8/22/2013", released=FALSE, codename="Rumpelstilzchen")
-  #versions[nrow(versions)+1,]<-list(version=0.2, date="8/22/2013", released=TRUE, codename="Wurst")
-  #versions[nrow(versions)+1,]<-list(version=0.3, date="8/22/2013", released=FALSE, codename="Test")
-  # label
-  versions$label<-paste("version ", versions$version, " (", versions$date, ", codename ", versions$codename, ")", sep="")
-  versions[which(!versions$released),]$label <- paste(versions[which(!versions$released),]$label, "- DEV VERSION (unreleased)")
-  return (versions)
-}
-
-# get version
-IDP.getVersionInfo<-function(idp) {
-  return (subset(IDP.getVersions(), version==idp$settings$version, select="label"))
-}
-
-# update an idp instance to the newest version
-IDP.update<-function(idp) {
-  for (version in subset(IDP.getVersions(), version > idp$settings$version)$version) {
-    cat("Updating IDP instance from version", idp$settings$version, "to version", version, "...")
-    idp<-do.call(paste("IDP.updateTo.v", version, sep=""), args=list(idp))
-    cat(" complete.\n")
-    idp$settings$version <- version
-  }
-  return (idp)
-}
-
-# update functions
-IDP.updateTo.v0.2<-function(idp) {
-  return (idp)
-}
-
-################
-# Installation #
-################
-
-# install the necessary packages
-IDP.install<-function() {
-  local({# set mirror to berkely
-    r <- getOption("repos")
-    r["CRAN"] <- "http://cran.cnr.berkeley.edu/"
-    options(repos = r)
-  }) 
-  cat("Installing required packages.\n")
-  install.packages("ggplot2", depen=TRUE) # for advanced plotting, includes reshape2 and plyr, is quick
-  install.packages("plyr", depen=TRUE)
-  install.packages("psych", depen=TRUE) # for reading the from the clipboard, fairly quick
-  install.packages("gWidgets", depen=TRUE) # for user interfaces, quick
-  update.packages(ask=FALSE)
-  cat("All required packages installed.\n")
-}
-
-###################
-# Code management #
-###################
-
-# package IDP
-IDP.package<-function(filename="IDP.R", dir="/Users/SKOPF/Dropbox/Tools/software/R/idp") {
-  funcsdir<-"/Users/SKOPF/Dropbox/Tools/software/R/funcs"
-  funcsfiles<-c("SKGUILIB.R", "SKDATALIB.R", "SKUTILLIB.R", "SKPLOTLIB.R")
-  idpdir<-dir
-  idpfiles<-c("IDP.main.R", "IDP.gui.R", "IDP.plots.R", "IDP.read.R", "IDP.table.R")
-  files<-c(file.path(idpdir, idpfiles), file.path(funcsdir, funcsfiles))
-  
-  header<-paste(
-    "##################################\n",
-    "# PACKAGED Isodat File Processor #\n",
-    "# ", format(Sys.time(), "%Y-%m-%d"), " by SKOPF           #\n",
-    "##################################\n\n", sep="")
-  for (i in 1:length(files)) 
-    files[i]<-readChar(files[i], file.info(files[i])$size)
-  cat(header, files, file=file.path(dir, filename), sep="\n\n\n")
-}
 

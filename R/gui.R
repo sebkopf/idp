@@ -40,7 +40,7 @@ IDP.hideInfo<-function(idp) {
 IDP.gui<-function(idp) {
   
   ### main window
-  idp$gui$win<-gwindow(paste("Isodate File Processor -", IDP.getVersionInfo(idp)), width=1280, height=640, visible=FALSE)
+  idp$gui$win<-gwindow(paste("Isodate File Processor - version", packageVersion('idp')), width=1280, height=640, visible=FALSE)
   
   ### storing settings for easier modification
   tag(idp$gui$win, "settings")<-idp$settings
