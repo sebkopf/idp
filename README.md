@@ -7,11 +7,7 @@ This package uses the access to raw isodat data formalized in the [isoread packa
 
 ## Installation
 
-The user interface in this package is generated using GTK+, a cross-platform toolkit for graphical user interfaces (http://www.gtk.org/). GTK needs to be installed prior to using this package.
-
-### Install R with GTK+
-
-If you don't have R and/or GTK yet, please follow this [link](https://gist.github.com/sebkopf/9405675) for information on installing R with GTK+. 
+The user interface in this package is generated using GTK+, a cross-platform toolkit for graphical user interfaces. GTK needs to be installed prior to using this package. If you don't have R and/or GTK yet, please follow this [link](https://gist.github.com/sebkopf/9405675) for information on installing R with GTK+. 
 
 ### Install idp package
 
