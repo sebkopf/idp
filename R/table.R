@@ -32,6 +32,11 @@ IDP.recalculatePeakTable<-function(idp) {
                                    mode = IDP.getSettings(idp, "stdsCalc"))
   pn.storeInfo(idp$gui$pn, list(peakTable=peakTable))
   IDP.loadPeakTable(idp, peakTable)
+  
+  # replot data if tab is open
+  if (svalue(idp$gui$fileInfo.nb) == 3) # data tab selected
+    IDP.plotData(idp, peakTable) 
+  
   IDP.showInfo(idp, paste0(IDP.getSettings(idp, "stdsCalc"), ": Peaks re-evaluated using standards for ", IDP.getSettings(idp, "stdsCalc")), 
                timer=3, okButton=FALSE)
 }

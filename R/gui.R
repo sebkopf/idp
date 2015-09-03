@@ -161,6 +161,7 @@ IDP.gui<-function(idp) {
   
   ### file graph
   idp$gui$info.graph <- ggraphics(container=idp$gui$fileInfo.nb, label="Refs", expand=TRUE)
+  idp$gui$data.graph <- ggraphics(container=idp$gui$fileInfo.nb, label="Data", expand=TRUE)
   
   ### plot grp
   idp$gui$pn <- pn.GUI(plot.grp, idp$gui$win, enablePlotLabel=FALSE, enableMenuButtons=FALSE, startWithTab=FALSE,
@@ -361,12 +362,20 @@ IDP.gui<-function(idp) {
   optionsSwitch(stdsCalcActs, stdsCalcSignals, list(name=idp$settings$stdsCalc)) # select right option from the start
   
   visHandler <- addHandlerFocus(idp$gui$win, handler=function(...) {
+    svalue(idp$gui$fileInfo.nb) <- 1
+    
     ### starting plot and notebook positions
     visible(idp$gui$info.graph) <- TRUE
     plot.new()
     text(0, 0, " ")
-    svalue(idp$gui$fileInfo.nb) <- 1
-    addHandlerChanged(idp$gui$fileInfo.nb, handler=function(h,...) if (h$pageno ==2) IDP.plotRefs(idp))
+    visible(idp$gui$data.graph) <- TRUE
+    plot.new()
+    text(0, 0, " ")
+    
+    addHandlerChanged(idp$gui$fileInfo.nb, handler=function(h,...) {
+      if (h$pageno ==2) IDP.plotRefs(idp)
+      else if (h$pageno == 3) IDP.plotData(idp)
+    })
     
     ### divider positions
     svalue(idp$gui$gl)<-IDP.getSettings(idp, "leftPane")

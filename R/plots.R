@@ -22,8 +22,34 @@ IDP.plotRefs <- function(idp, peakTable = NULL) {
     p <- p +
       geom_point(size=3, shape=21, fill="gray", color="black") + 
       scale_x_continuous(breaks=refsTable$Rt) +
-      scale_y_continuous(expand = c(0,1)) + 
+      scale_y_continuous(expand = c(0.15, 0)) + 
       labs(title = paste(IDP.getSettings(idp, "stdsCalc"), "standards"), y="dD [permil] vs mean R", x="Retention time") + theme_bw() + 
+      geom_text(aes(label = PeakNr), size = 3, vjust = -1) + 
+      theme(legend.position="bottom", axis.text.x = element_text(angle = 60, hjust = 1)) 
+    print(p)
+  } else {
+    plot.new()
+    text(0.4, 0.5, labels="No peak table.")
+  }
+}
+
+
+IDP.plotData <- function(idp, peakTable = NULL) {
+  if (is.null(peakTable))
+    peakTable<-pn.getAllInfo(idp$gui$pn)$peakTable
+  
+  # activate refs plot
+  visible(idp$gui$data.graph) <- TRUE
+  if (!is.null(peakTable)) {
+    
+    table <- subset(peakTable, !RefPeak)
+    table$seq<-1:nrow(table)
+    
+    p <- ggplot(table, aes(seq, d2H1H)) + 
+      geom_point(size=3, shape=21, fill="gray", color="black") + 
+      scale_x_continuous(breaks=table$seq, labels=paste("RT:", table$Rt)) +
+      scale_y_continuous(expand = c(0.15, 0)) + 
+      labs(y="dD [permil] vs VSMOW", x="") + theme_bw() + 
       geom_text(aes(label = PeakNr), size = 3, vjust = -1) + 
       theme(legend.position="bottom", axis.text.x = element_text(angle = 60, hjust = 1)) 
     print(p)
