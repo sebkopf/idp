@@ -27,14 +27,20 @@ IDP.copyPeakTable<-function(idp) {
 
 # recalculate isotopic value of peak table
 IDP.recalculatePeakTable<-function(idp) {
-  gmessage("sorry, not implemented yet")
+  peakTable <- pn.getAllInfo(idp$gui$pn)$peakTable
+  peakTable <- IDP.reevaluatePeaks(peakTable, -151.9, # FIXME this should not be hardcoded!!
+                                   mode = IDP.getSettings(idp, "stdsCalc"))
+  pn.storeInfo(idp$gui$pn, list(peakTable=peakTable))
+  IDP.loadPeakTable(idp, peakTable)
+  IDP.showInfo(idp, paste0(IDP.getSettings(idp, "stdsCalc"), ": Peaks re-evaluated using standards for ", IDP.getSettings(idp, "stdsCalc")), 
+               timer=3, okButton=FALSE)
 }
 
 # revert to original peak table
 IDP.revertPeakTable<-function(idp) {
   if (!is.null(oriPeakTable <- pn.getAllInfo(idp$gui$pn)$originalPeakTable)) {
     if (gconfirm("Do you really want to discard all changes you have made to peak/standard assignments in this file?")) {
-      pn.storeInfo(idp$gui$pn, list(peakTable=oriPeakTable), reset=TRUE)
+      pn.storeInfo(idp$gui$pn, list(peakTable=oriPeakTable))
       IDP.loadPeakTable(idp, oriPeakTable)
     }
   }

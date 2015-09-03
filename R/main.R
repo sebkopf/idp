@@ -111,6 +111,9 @@ IDP.init<-function() {
   idp$settings$rightPane <- 0.6 # position of right pane top vs bottom
   idp$settings$centerPane <- 0.25  # position of center pane left vs right
   
+  # calculation options
+  idp$settings$stdsCalc <- "Bracketing"
+  
   # plotting options
   idp$settings$plotOptions<-list(
     labels = list(x="Time", y="Signal"), 
@@ -137,7 +140,7 @@ IDP.init<-function() {
     Show=TRUE, Required=FALSE, IsodatCol=TRUE, stringsAsFactors=FALSE)
   idp$settings$peakTableColumns[2, "Required"]<-TRUE # Peak Nr. is required b/c it's the ID
   idp$settings$peakTableColumns[3:5, "IsodatCol"]<-FALSE # Columns not present in isodat
-  idp$settings$peakTableColumns[3:5, "Show"]<-FALSE # do not show these by default
+  idp$settings$peakTableColumns[c(1,5), "Show"]<-FALSE # do not show these by default
   return (idp)
 }
 

@@ -12,9 +12,19 @@ IDP.plotRefs <- function(idp, peakTable = NULL) {
     refsTable<-subset(peakTable, RefPeak == TRUE, select=c("PeakNr", "Rt", "rR3H2v2H2"))
     refsTable$dDvariation <- iso.RtoDx(refsTable$rR3H2v2H2, mean(refsTable$rR3H2v2H2))
     refsTable$seq<-1:nrow(refsTable)
-    p<-ggplot(refsTable, aes(seq, dDvariation)) + geom_point(size=3, shape=21, fill="gray", color="black") + 
-      scale_x_continuous(breaks=refsTable$seq, labels=paste("Peak Nr:", refsTable$PeakNr, "\nRT:", refsTable$Rt)) +
-      labs(y="dD [permil] vs mean R", x="") + theme_bw() + 
+    p<-ggplot(refsTable, aes(Rt, dDvariation))
+    
+    if (IDP.getSettings(idp, "stdsCalc") == "Bracketing")
+      p <- p + geom_line() 
+    else if (IDP.getSettings(idp, "stdsCalc") == "Regression")
+      p <- p + geom_smooth(method='lm',formula=y~x)
+    
+    p <- p +
+      geom_point(size=3, shape=21, fill="gray", color="black") + 
+      scale_x_continuous(breaks=refsTable$Rt) +
+      scale_y_continuous(expand = c(0,1)) + 
+      labs(title = paste(IDP.getSettings(idp, "stdsCalc"), "standards"), y="dD [permil] vs mean R", x="Retention time") + theme_bw() + 
+      geom_text(aes(label = PeakNr), size = 3, vjust = -1) + 
       theme(legend.position="bottom", axis.text.x = element_text(angle = 60, hjust = 1)) 
     print(p)
   } else {
@@ -27,22 +37,43 @@ IDP.plotRefs <- function(idp, peakTable = NULL) {
 # Zoom Handlers #
 #################
 
+IDP.find_peak_from_click <- function(idp, x) {
+  # reverse transformation for coordinates
+  xRevFunc <- IDP.getSettings(idp, "plotOptions")$xUnits$revFuncs[[IDP.getSettings(idp, "plotOptions")$xUnits$value]] 
+  x <- do.call(xRevFunc, list(x))
+  # find closest peak
+  peakTable <- pn.getAllInfo(idp$gui$pn)$peakTable
+  if (!is.null(peakTable) && !is.empty(index<-which(peakTable$Start<=x & peakTable$End>=x))) 
+    return(peakTable[index[1],]) # found a peak (but only return 1!)
+  return(NULL) # no peak found
+}
+
 IDP.plotClickHandler<-function(idp, h) {
   if (identical(h$x[1], h$x[2]) && identical(h$y[1], h$y[2])) {
     if (IDP.getSettings(idp, "mode")=="ModeInfo") {
-      # reverse transformation for coordinates
-      xRevFunc <- IDP.getSettings(idp, "plotOptions")$xUnits$revFuncs[[IDP.getSettings(idp, "plotOptions")$xUnits$value]] 
-      x <- do.call(xRevFunc, list(h$x[1]))
-      
-      # find closest peak
-      peakTable<-pn.getAllInfo(idp$gui$pn)$peakTable
-      if (!is.null(peakTable) && !is.empty(index<-which(peakTable$Start<=x & peakTable$End>=x))) {
-        peakNr <- peakTable[index,"PeakNr"]
+      peak <- IDP.find_peak_from_click(idp, h$x[1])
+      if (!is.null(peak)) {
+        peakNr <- peak$PeakNr
         svalue(tag(idp$gui$win, "dataTable"), index=TRUE)<-which(tag(idp$gui$win, "dataTable")[]["Peak Nr.\n"]==peakNr)
         IDP.showInfo(idp, paste("Peak #", peakNr, " selected. RT = ", 
-                                peakTable[index, "Rt"], " s. Amp2 = ", peakTable[index, "Amp2"], " mV. dD (vs SMOW) = ", 
-                                peakTable[index, "d2H1H"], " permil.", sep=""), timer=3, okButton=FALSE)
+                               peak$Rt, " s. Amp2 = ", peak$Amp2, " mV. dD (vs SMOW) = ", 
+                               peak$d2H1H, " permil.", sep=""), timer=3, okButton=FALSE)
       }
+    } else if (IDP.getSettings(idp, "mode")=="ModeRefs") {
+      peak <- IDP.find_peak_from_click(idp, h$x[1])
+      if (!is.null(peak)) {
+        peakTable <- pn.getAllInfo(idp$gui$pn)$peakTable
+        idx <- peakTable$PeakNr == peak$PeakNr
+        peakTable[idx,"RefPeak"] <- !peakTable[idx,"RefPeak"]
+        pn.storeInfo(idp$gui$pn, list(peakTable=peakTable))
+        IDP.plot(idp) # replot
+        
+        # replot refs if tab is open
+        if (svalue(idp$gui$fileInfo.nb) == 2) # refs tab selected
+          IDP.plotRefs(idp, peakTable) # load references
+      }
+    } else {
+      IDP.showInfo(idp, "Sorry, functionality not implemented yet", type="error", timer=2, okButton=FALSE)
     }
   } else {
     fileInfo<-pn.getAllInfo(idp$gui$pn)
@@ -224,7 +255,7 @@ IDP.plot <- function(idp, fileInfo = NULL, ...) {
     # check if any peak is selected in the table and highlight it
     idx <- svalue(tag(idp$gui$win, "dataTable"), index = TRUE)
     if (!is.null(idx) && length(idx) > 0) {
-      abline(v = do.call(xFuncs, list(fileInfo$peakTable[idx,"Rt"])), col = "red", lty=1, size = 2)
+      abline(v = do.call(xFuncs, list(fileInfo$peakTable[idx,"Rt"])), col = "red", lty=1)
     }
     
     #implement me: baseline

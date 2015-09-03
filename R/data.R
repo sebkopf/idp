@@ -1,27 +1,119 @@
+#####################
+# Data calculations #
+#####################
+
+# Columns in Delta Plus peak list (raw data)
+# Filename - this is the filename the data is from (this is stored in the complete data set)
+# Peak Nr - this is the number of the detected peak, a * after the number means it is a recognized reference peak (only that it is a reference peak is stored)
+# Component - can be defined in the method 
+# Master Peak - if this peak is added by hand, this is the nearest peak, defined to serve as a reference
+# Ref  Name - reference name --> imported but not used
+# Start (s) - start retention time --> imported
+# Rt (s) - apex RT --> imported (and stored both in s and in min as RT.s and RT.min)
+# End (s) - end retention time --> imported
+# Width (s) - just the difference of End - Start (not imported)
+# Ampl  2 (mV) - amplitude of signal 2 at apex RT (imported, ideally with more significant digits)
+# Ampl  3 (mV) - amplitude of signal 3 at apex RT (imported, ideally with more significant digits)
+# BGD 2 (mV) - background of signal 2 at apex RT (imported, ideally with more significant digits)
+# BGD 3 (mV) - background of signal 3 at apex RT (imported, ideally with more significant digits)
+# Area All (Vs) - Area 2 + Area 3 (not imported)
+# Area 2 (Vs) - area of peak in signal 2 (not imported)
+# Area 3 (Vs) - area of peak in signal 2 (not imported), useless because of low sig. digits
+# rArea All (mVs) - rArea 2 + rArea3 (not imported)
+# rArea 2 (mVs) - 1000*Area2 --> imported, ideally with more sig. digits
+# rArea 3 (mVs) - 10^6*Area3 --> imported but still not enough significant digit to calculate everything from
+# R 3H2/2H2 - Area2/Area3 --> useless because of low sig. digits
+# rR 3H2/2H2 - rArea2/rArea3 --> imported, this is the most useful actual data in terms of sig. digits, but could still use 1 or 2 more for downstream calcs
+# rd 3H2/2H2 (per mil) vs  methane ref --> data vs. ref peak (not imported, could be calculated sufficiently well with sig. digits of rR)
+# this is calculated by the usual formula, here: (rR 3H2/2H2 / rR_ref - 1)*1000
+# where rR_ref is the linear extrapolation of the rR 3H2/2H2 value from the two reference peaks bracketing the given peak
+# i.e. rR_ref = rR_CH4before + (rR_CH4after - rR_CH4before)/(RT_CH4after - RT_CH4before) * (RT_peak - RT_CH4before)
+# FIXME: check how this is extrapolated for peaks not bracketed by ref peaks
+# d 3H2/2H2 (per mil) vs VSMOW --> data vs. VSMOW (not imported, could be calculated precisely from calculated rR 3H2/2H2)
+# (R/Rvsmow - 1)*1000, where R/Rvsmow = R/Rref * Rref/Rvsmow = {([rd 3H2/2H2]/1000 + 1) * ([d 3H2/2H2]CH4vsSMOW/1000 + 1) - 1} * 1000
+# DeltaDelta 3H2/2H2 (a???) - if the peak is modified/another peak added, this is the difference between the peak and its master peak (not really a useful measure, not imported)
+# R 2H/1H - actual D/H ratio of the peak (not imported, could be calculated precisely from d 2H/1H vs SVMOW)
+# R = (dD/1000 + 1) * R_VSMOW, where VSMOW = 155.76 ppm (this is the value isodat seems to use)
+# d 2H/1H (per mil) vs  VSMOW - the actual dD vs VSMOW (imported but could technically be calculated from d 3H2/2H2 vs SMOW, should be the exact same pretty much!)
+# AT% 2H/1H (%) - excess atom percent D (not 100% sure how this is calculated), not imported
+# this should be a simple calculation of R/(1+R) but somehow this doesn't actually add up, they calculate not really atom% but some funky excess number
+# Note: on second thought, I think this is actually correct but it strongly depends on the exact chosen value of VSMOW R
+
+#' reevaluate peaks based on the standards - recalculates the following values with rR_ref the linear 
+#' extrapolation of the rR 3H2/2H2 value from the two reference peaks bracketing the given peak
+#'    rd 3H2/2H2 vs. methane ref = (rR 3H2/2H2 / rR_ref - 1)*1000
+#'    d 3H2/2H2 (per mil) vs VSMOW = [ (rR 3H2/2H2 / rR_ref) * (dRef_vs_VSMOW/1000 + 1) - 1]*1000
+#'    d 2H/1H (per mil) vs  VSMOW = d 3H2/2H2 (per mil) vs VSMOW
+#'    R 2H/1H = (rR 3H2/2H2 / rR_ref) * (dRef_vs_VSMOW/1000 + 1) * R_VSMOW
+#'    AT% 2H/1H (%) = R/(1+R) * 100
+#' @param peakTable
+#' @param stds_dD - the delta D values of the standards
+#' @param mode - how to evaoluate the standards (bracketing vs regression)
+#' @param R_VSMOW - the D/H ratio in VSMOW
+IDP.reevaluatePeaks <- function(peakTable, stds_dD, mode, R_VSMOW = 0.0001557643) {
+  test <- peakTable
+  test$rR_ref_bracket <- IDP.calculate_rR_ref(peakTable, mode = "Bracketing")
+  test$rR_ref_regress <- IDP.calculate_rR_ref(peakTable, mode = "Regression")
+  print(test[c("PeakNr", "RefPeak", "rR3H2v2H2", "rR_ref_bracket", "rR_ref_regress")])
+  
+  rR_ref <- IDP.calculate_rR_ref(peakTable, mode = mode)
+  
+  # for all of these, using the same rounding as isodat
+  peakTable <- mutate(
+    peakTable,
+    rd3H2v2H2 = round((rR3H2v2H2 / rR_ref - 1) * 1000, 3), 
+    d3H2v2H2 = round(((rR3H2v2H2 / rR_ref) * (stds_dD/1000 + 1) - 1) * 1000, 3),
+    d2H1H = d3H2v2H2,
+    R2H1H = round((rR3H2v2H2 / rR_ref) * (stds_dD/1000 + 1) * R_VSMOW, 7),
+    AT2H1H = round(R2H1H/(1 + R2H1H) * 100, 6)
+    )
+  return(peakTable)
+}
+
+IDP.calculate_rR_ref <- function(peakTable, mode = c("Bracketing", "Regression")) {
+  mode <- match.arg(mode)
+  if (mode == "Bracketing") {
+    
+    # extrapolate the reference rR values
+    extrapolate_refs <- function(refs, peak_rt){
+      # check for reference
+      ref <- subset(refs, Rt == peak_rt)
+      if (nrow(ref) > 0) # it's a reference, just return its own value
+        return(ref$rR3H2v2H2)
+      
+      # check for neighboring references
+      before_ref <- suppressWarnings(subset(refs, (peak_rt - Rt) > 0 & (peak_rt - Rt) == min( (peak_rt - Rt)[(peak_rt - Rt) > 0]) ))
+      after_ref <- suppressWarnings(subset(refs, (peak_rt - Rt) < 0 & (peak_rt - Rt) == max( (peak_rt - Rt)[(peak_rt - Rt) < 0]) ))
+      
+      # return depending on intra/extrapolation
+      if (nrow(before_ref) > 0 && nrow(after_ref) == 0) return(before_ref$rR3H2v2H2)
+      else if (nrow(before_ref) == 0 && nrow(after_ref) > 0) return(after_ref$rR3H2v2H2)
+      else if (nrow(before_ref) > 0 && nrow(after_ref) > 0) {
+        slope <- (after_ref$rR3H2v2H2 - before_ref$rR3H2v2H2) / (after_ref$Rt - before_ref$Rt)
+        extrap_rR <- before_ref$rR3H2v2H2 + slope * (peak_rt - before_ref$Rt)
+        return(extrap_rR)
+      } else
+        stop("need at least one reference either before or after the peak")
+    }
+    
+    refs <- subset(peakTable, RefPeak == TRUE)
+    return(sapply(peakTable$Rt, function(x) extrapolate_refs(refs, x)))
+    
+  } else if (mode == "Regression") {
+    
+    refs <- subset(peakTable, RefPeak == TRUE)
+    m <- lm(rR3H2v2H2 ~ Rt, data = refs)
+    print (summary(m)) # FIXME: output the information with a little more detail somewher else (maybe in info box?)
+    rR_predict <- predict(m, peakTable[, "Rt", drop=F]) # estimate the ratio from the regression
+    rR_predict[peakTable$RefPeak] <- refs$rR3H2v2H2 # but keep the ratios for the standards
+    return(rR_predict)
+  }
+  stop("don't know how to calculate rR ref with mode ", mode)
+}
+
 ##################
 # Data functions #
 ##################
-
-# find peak index of peak that belongs to the x coordinate (return NULL if no peak associated with this)
-# CP.findPeak<-function(cpgui, x) {
-#   if (!is.null(tag(cpgui$gobj, "data")$time)) {# time signal
-#     xs<-tag(cpgui$gobj, "data")$time
-#     peaks<-tag(cpgui$gobj,"peaks")[c("startRT","endRT", "PI")]
-#   } else { # no time signal
-#     xs<-1:nrow(tag(cpgui$gobj,"data")) 
-#     peaks<-tag(cpgui$gobj,"peaks")[c("SI","EI","PI")]
-#   }
-#   return(peaks[which(peaks[[1]]<=x & peaks[[2]]>=x),"PI"])
-# }
-# 
-# # find index from RT (or if index passed in, index is returned)
-# CP.findIndexFromRT<-function(cpgui, RT) {
-#   if (!is.null(tag(cpgui$gobj, "data")$time)) {# time signal
-#     diff<-abs(tag(cpgui$gobj, "data")$time-RT)
-#     return (which(diff==min(diff))) 
-#   } else # no time signal
-#     return (RT) # this is index
-# }
 
 # find the max and min in an interval (returns ylim = c(ymin, ymax))
 # xlim, by default the last stack entry in the current plot tab

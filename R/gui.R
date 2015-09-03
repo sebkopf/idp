@@ -208,6 +208,7 @@ IDP.gui<-function(idp) {
       list ("MoveIntervalF", "gtk-go-forward", "Move Right", "<ctrl><shift>Right", "Move visible window to the right", function (h,...) IDP.zoomMove(idp, +1)), # FIXME: shortcuts don't work
       list ("SetAxes", "gtk-page-setup", "Set Axes", NULL, "Set axis coordinates", function(h,...) gmessage("not implemented yet") ), # fix me, better short cuts?
       list ("DataTable" , NULL , "_Data" , NULL , NULL , NULL ) ,
+      list ("StdsCalc" , NULL , "_Standards" , NULL , NULL , NULL ) ,
       list ("Mode" , NULL , "_Mode" , NULL , NULL , NULL ) ,
       list ("Settings" , NULL , "_Settings" , NULL , NULL , NULL ) , 
       list ("XUnits" , NULL , "_X-axis Units" , NULL , NULL , NULL ) ,
@@ -225,10 +226,10 @@ IDP.gui<-function(idp) {
         tbl <- table.toggleTable(ggroup(cont=dlg, expand=TRUE), tag(idp$gui$win, "settings")$peakTableColumns, "Show", invisibleColumns=c("Name", "Required", "IsodatCol"))
         visible(dlg, set=TRUE) ## show dialog
       }),
-      list ("DeletePeak" , "gtk-cancel" , "Delete Peak", "<ctrl>D", "Delete selected peak (<ctrl>D)" , function(...) {gmessage("sorry, not implemented yet")}),
+      list ("DeletePeak" , "gtk-cancel" , "Delete Peak", "<ctrl>D", "Delete selected peak (<ctrl>D)" , function(...) { IDP.showInfo(idp, "Sorry, functionality not implemented yet", type="error", timer=2, okButton=FALSE)  }),
       list ("CopyTable" , "gtk-copy" , "Copy Table", "<ctrl>C", "Copy the peak table to the clipboard." , function(...) IDP.copyPeakTable(idp)),
       list ("Recalculate" , "gtk-execute" , "Re-evaluate", "<ctrl>R", "Recalculate the isotopic composition based on the standards picked." , function(...) IDP.recalculatePeakTable(idp)),
-      list ("Revert" , "gtk-revert-to-saved" , "Discard All", NULL, "Discard all changes and return to original peak table from data file." , function(...) IDP.revertPeakTable(idp))
+      list ("Revert" , "gtk-revert-to-saved" , "Revert All", NULL, "Discard all changes and return to original peak table from data file." , function(...) IDP.revertPeakTable(idp))
     )
   
   action_group <- gtkActionGroup ( "FileGroup" )
@@ -317,6 +318,18 @@ IDP.gui<-function(idp) {
   action_group$addActionWithAccel(modeacts$ModeEdit, "<control>E")
   action_group$addActionWithAccel(modeacts$ModeRefs, NULL) #FIXME (control - C taken by copy peak table)
   
+  # switch between standards calc options
+  stdsCalcActs <- list(
+    Bracketing = gtkToggleAction("Bracketing", "Bracketing", "Use bracketing for standardization"),
+    Regression = gtkToggleAction("Regression", "Regression", "Use regression for standardization"))
+  stdsCalcSignals <- list()
+  for (name in names(stdsCalcActs)) {
+    stdsCalcSignals[[name]] <- gSignalConnect (stdsCalcActs[[name]] , "toggled" , function(action) {
+        tag(idp$gui$win, "settings")$stdsCalc <- optionsSwitch(stdsCalcActs, stdsCalcSignals, action)
+      })
+    action_group$addAction(stdsCalcActs[[name]])
+  }
+  
   
   ### assemble menu
   uimanager <- gtkUIManagerNew() 
@@ -345,6 +358,7 @@ IDP.gui<-function(idp) {
   ### make window visible after it's completely initialized
   optionsSwitch(modeacts, modeact_IDs, list(name=idp$settings$mode)) # select right option from the start
   optionsSwitch(xaxisActs, xaxisSignals, list(name=idp$settings$plotOptions$xUnits$ids[[idp$settings$plotOptions$xUnits$value]])) # select right xaxis from the start
+  optionsSwitch(stdsCalcActs, stdsCalcSignals, list(name=idp$settings$stdsCalc)) # select right option from the start
   
   visHandler <- addHandlerFocus(idp$gui$win, handler=function(...) {
     ### starting plot and notebook positions
@@ -411,30 +425,35 @@ IDP.getNavXML<-function() {
   <menuitem action="FullScreen"/>
   </menu>
   <menu name="PlotMenu" action="Plot">
-  <menu name="XUnits" action="XUnits">
-  <menuitem action="XaxisSec"/>
-  <menuitem action="XaxisMin"/>
-  </menu>
-  <menu name="PlotOptions" action="PlotOptions">
-  <menuitem action="MarkRefs"/>
-  <menuitem action="PeakDelimsOn"/>
-  <menuitem action="ApexMarkerOn"/>
-  </menu>
-  <separator/>
-  <menu name="Mode" action="Mode">
-  <menuitem action ="ModeInfo"/>
-  <menuitem action ="ModeAdd"/>
-  <menuitem action ="ModeEdit"/>
-  <menuitem action ="ModeRefs"/>
-  </menu>
-  <menuitem action ="DeletePeak"/>
-  <separator/>
-  <menuitem action="SavePlot"/>
-  <menuitem action="SaveAll"/>
-  <separator/>
-  <menuitem action="PrintPlot"/>
+    <menu name="XUnits" action="XUnits">
+      <menuitem action="XaxisSec"/>
+      <menuitem action="XaxisMin"/>
+    </menu>
+    <menu name="PlotOptions" action="PlotOptions">
+      <menuitem action="MarkRefs"/>
+      <menuitem action="PeakDelimsOn"/>
+      <menuitem action="ApexMarkerOn"/>
+    </menu>
+    <separator/>
+    <menu name="Mode" action="Mode">
+      <menuitem action ="ModeInfo"/>
+      <menuitem action ="ModeAdd"/>
+      <menuitem action ="ModeEdit"/>
+      <menuitem action ="ModeRefs"/>
+    </menu>
+    <menuitem action ="DeletePeak"/>
+    <separator/>
+    <menuitem action="SavePlot"/>
+    <menuitem action="SaveAll"/>
+    <separator/>
+    <menuitem action="PrintPlot"/>
   </menu>
   <menu name="DataTable" action="DataTable">
+  <menu name="StdsCalc" action="StdsCalc">
+    <menuitem action="Bracketing"/>
+    <menuitem action="Regression"/>
+  </menu>
+  <separator/>
   <menuitem action ="CopyTable"/>
   <menuitem action="TableColumns"/>
   <separator/>
