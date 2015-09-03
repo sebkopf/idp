@@ -208,7 +208,7 @@ IDP.gui<-function(idp) {
       list ("Settings" , NULL , "_Settings" , NULL , NULL , NULL ) , 
       list ("XUnits" , NULL , "_X-axis Units" , NULL , NULL , NULL ) ,
       list ("PlotOptions" , NULL , "_Plot Options" , NULL , NULL , NULL ) ,
-      list ("EditSettings" , "gtk-preferences" , "_Edit Settings" , NULL , NULL , function(...) {gmessage("")} ) , 
+      list ("EditSettings" , "gtk-preferences" , "_Edit Settings" , NULL , NULL , function(...) {gmessage("no editable settings implemented yet, sorry")} ) , 
       list ("TableColumns", "gtk-properties", "_Table Columns", NULL, "Select which peak table columns are displayed", function(...) {
         dlg <- gbasicdialog(title="Select visible columns for the peak table", handler = function(h,...) {
           tag(idp$gui$win, "settings")$peakTableColumns <- tbl[] # save updated peak table column settings
@@ -269,11 +269,26 @@ IDP.gui<-function(idp) {
   MarkRefsAct = gtkToggleAction("MarkRefs", "Mark Reference Peaks", "Mark reference peaks with *")
   MarkRefsAct['active']<-idp$settings$plotOptions$markRefs
   gSignalConnect (MarkRefsAct, "toggled" , function ( action ) {
-    #tag(idp$gui$win, "settings")$plotOptions$markRefs <- MarkRefsAct['active']
     IDP.setSettings(idp, list("plotOptions.markRefs" = MarkRefsAct['active']))
     IDP.plot(idp) # replot
   } )
   action_group$addAction(MarkRefsAct)
+  
+  PeakDelimsOnAct = gtkToggleAction("PeakDelimsOn", "Show Peak Delimiters", "Show vertical lines to demarkate peaks")
+  PeakDelimsOnAct['active']<-idp$settings$plotOptions$edgeMarker$on
+  gSignalConnect (PeakDelimsOnAct, "toggled" , function ( action ) {
+    IDP.setSettings(idp, list("plotOptions.edgeMarker.on" = PeakDelimsOnAct['active']))
+    IDP.plot(idp) # replot
+  } )
+  action_group$addAction(PeakDelimsOnAct)
+  
+  ApexMarkerOnAct = gtkToggleAction("ApexMarkerOn", "Show Apex Marker", "Show vertical lines to demarkate peak apex")
+  ApexMarkerOnAct['active']<-idp$settings$plotOptions$apexMarker$on
+  gSignalConnect (ApexMarkerOnAct, "toggled" , function ( action ) {
+    IDP.setSettings(idp, list("plotOptions.apexMarker.on" = ApexMarkerOnAct['active']))
+    IDP.plot(idp) # replot
+  } )
+  action_group$addAction(ApexMarkerOnAct)
   
   # best fit (toggle)
   idp$gui$bestfitActive<-gtkToggleAction("BestFit", "Best Fit", "Fit to tallest peak", stock.id="gtk-zoom-100")
@@ -397,6 +412,8 @@ IDP.getNavXML<-function() {
   </menu>
   <menu name="PlotOptions" action="PlotOptions">
   <menuitem action="MarkRefs"/>
+  <menuitem action="PeakDelimsOn"/>
+  <menuitem action="ApexMarkerOn"/>
   </menu>
   <separator/>
   <menu name="Mode" action="Mode">

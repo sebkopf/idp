@@ -209,6 +209,19 @@ IDP.plot <- function(idp, fileInfo = NULL, ...) {
       text(do.call(xFuncs, list(refPeaks$Rt)), refPeaks$signal, labels="*", col="black", srt=90, adj=c(-0.5,0.65), cex=0.9)
     }
   }
+  
+  # peak delimiters
+  if (nrow(fileInfo$peakTable) > 0 ) { # plot the peaks on top of the chromatogram
+    if (plotOptions$apexMarker$on)
+      abline(v = do.call(xFuncs, list(fileInfo$peakTable$Rt)), col = plotOptions$apexMarker$color, lty=2)
+    if (plotOptions$edgeMarker$on) {
+      abline(v = do.call(xFuncs, list(fileInfo$peakTable$Start)), col = plotOptions$edgeMarker$color, lty=2)
+      abline(v = do.call(xFuncs, list(fileInfo$peakTable$End)), col= plotOptions$edgeMarker$color, lty=2)
+    }
+    #implement me: baseline
+    #segments(peaks$startX,peaks$startY,peaks$endX,peaks$endY, col="red")
+  }
+
   # store plotting information
   pn.storeInfo(idp$gui$pn, list(plotInfo = plotInfo))
 }

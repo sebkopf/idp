@@ -56,7 +56,7 @@ The dependency packages have many dependencies of their own and sometimes not al
 To update an older installation of the **idp** package to the newest version, just restart R and rerun ```install_github("sebkopf/idp")```. 
 
 
-##Run dsqdp
+##Run IDP
 
 ### In R
 Once installed, you can now run the Isodat Data Processor in any R workspace (command line R, RStudio, iPython Rmagic, etc.):

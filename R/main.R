@@ -119,9 +119,9 @@ IDP.init<-function() {
     trace2 = list(on = TRUE, color="black", offset=200), #offset in mV
     trace3 = list(on = TRUE, color="dark green", offset=0),
     markRefs = TRUE, # whether standards should be marked
-    baseMarker = list(on = TRUE, color="red"),
+    baseMarker = list(on = TRUE, color="red"), #  not implemtend yet
     apexMarker = list(on = TRUE, color="red"),
-    edgeMarker = list(on = TRUE, color="blue"),
+    edgeMarker = list(on = FALSE, color="blue"),
     zoomBuffer = 0.05,  # when it will be considered to be a y zoom or just x zoom (currently 5%)
     zoomIn = 0.5, # how much to zoom in (50%)
     zoomOut = 2, # how much to zoom out (100%)
