@@ -172,6 +172,10 @@ IDP.gui<-function(idp) {
   
   ### table grp
   tag(idp$gui$win, "dataTable") <- gtable(IDP.getEmptyPeakTable(idp), expand=TRUE, cont=tag(idp$gui$win, "tableGrp"))
+  data_table_click_handler <-  function(h,...) {
+    if ( length(svalue(h$obj, index = TRUE)) > 0 ) IDP.plot(idp) # replot to highlight the value
+  }
+  addHandlerClicked( tag(idp$gui$win, "dataTable"), handler = data_table_click_handler)
   
   ### menu and toolbar navigation actions
   nav.xml <- IDP.getNavXML()
@@ -214,6 +218,7 @@ IDP.gui<-function(idp) {
           tag(idp$gui$win, "settings")$peakTableColumns <- tbl[] # save updated peak table column settings
           delete(tag(idp$gui$win, "tableGrp"), tag(idp$gui$win, "dataTable")) # delete previous table
           tag(idp$gui$win, "dataTable")<-gtable(IDP.getEmptyPeakTable(idp), expand=TRUE, cont=tag(idp$gui$win, "tableGrp")) # remake current table
+          addHandlerClicked( tag(idp$gui$win, "dataTable"), handler = data_table_click_handler)
           IDP.loadPeakTable(idp, pn.getAllInfo(idp$gui$pn)$peakTable)
         })
         size(dlg)<-c(500,500)

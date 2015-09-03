@@ -211,13 +211,22 @@ IDP.plot <- function(idp, fileInfo = NULL, ...) {
   }
   
   # peak delimiters
-  if (nrow(fileInfo$peakTable) > 0 ) { # plot the peaks on top of the chromatogram
+  if (nrow(fileInfo$peakTable) > 0 ) {
+    
+    # plot markers if enabled in the options
     if (plotOptions$apexMarker$on)
       abline(v = do.call(xFuncs, list(fileInfo$peakTable$Rt)), col = plotOptions$apexMarker$color, lty=2)
     if (plotOptions$edgeMarker$on) {
       abline(v = do.call(xFuncs, list(fileInfo$peakTable$Start)), col = plotOptions$edgeMarker$color, lty=2)
       abline(v = do.call(xFuncs, list(fileInfo$peakTable$End)), col= plotOptions$edgeMarker$color, lty=2)
     }
+    
+    # check if any peak is selected in the table and highlight it
+    idx <- svalue(tag(idp$gui$win, "dataTable"), index = TRUE)
+    if (!is.null(idx) && length(idx) > 0) {
+      abline(v = do.call(xFuncs, list(fileInfo$peakTable[idx,"Rt"])), col = "red", lty=1, size = 2)
+    }
+    
     #implement me: baseline
     #segments(peaks$startX,peaks$startY,peaks$endX,peaks$endY, col="red")
   }
